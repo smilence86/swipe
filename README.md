@@ -1,0 +1,1 @@
+Score a girl's picture with cnn model, swipe left or right in tantan app automatically.

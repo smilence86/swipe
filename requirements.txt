@@ -1,0 +1,5 @@
+#ubuntu环境依赖
+numpy==1.16.4
+matplotlib==2.1.1
+opencv-python==3.4.0.12
+tensorflow>=1.14.0
