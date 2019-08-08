@@ -1,10 +1,9 @@
-# -*- coding: utf-8 -*-
 import math, random, time as time, datetime, shutil, os, cv2
 import tensorflow as tf
 import numpy as np
 
 
-EPOCH = 30              #所有样本循环训练次数
+EPOCH = 10              #所有样本循环训练次数
 n_classes=10            #分类个数
 width=200               #输入图片宽度
 height=200              #输入图片高度
@@ -233,6 +232,7 @@ def start_train(sess, epoch):
             # —————————————————————————————————————————————————————
         saveLoss('./loss.npz', loss_array)            
         saver_init.save(sess, "./model/mode.mod")
+    file_writer = tf.compat.v1.summary.FileWriter('./logs', sess.graph)
     print('训练完成！')
 
 def test_model(sess):
