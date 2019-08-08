@@ -3,7 +3,7 @@ import tensorflow as tf
 import numpy as np
 
 
-EPOCH = 10              #所有样本循环训练次数
+EPOCH = 40              #所有样本循环训练次数
 n_classes=10            #分类个数
 width=200               #输入图片宽度
 height=200              #输入图片高度
