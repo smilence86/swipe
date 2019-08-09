@@ -153,7 +153,7 @@ def swipe(score):
     if score >= 7:
         x_start = 200   #swipe to right with a beautiful girl
     #adb shell input swipe x1 y1 x2 y2 millisecond
-    cmd = 'adb shell input swipe {} 688 520 698 {}'.format(x_start, int(random.uniform(200, 250)))
+    cmd = 'adb shell input swipe {} 688 520 698 {}'.format(x_start, int(random.uniform(100, 150)))
     print(cmd)
     os.system(cmd)
 
@@ -274,8 +274,8 @@ with tf.compat.v1.Session() as sess:
     if IS_TRAINING:
         start_train(sess, EPOCH)
     else:
-        test_model(sess)
-        # start_play(sess)
+        # test_model(sess)
+        start_play(sess)
         # pass
 
 
