@@ -148,29 +148,13 @@ def get_screen_shot():
     return parseImage(filepath, False)
 
 
-# 按压press_time时间后松开，完成一次跳跃
-def jump(press_time):
-
-    xs = [random.uniform(840, 870) for _ in range(2)]
-    ys = [random.uniform(1750, 1820) for _ in range(2)]
-    
-    cmd = 'adb shell input swipe {} {} {} {} {}'.format(
-        int(xs[0]),
-        int(ys[0]), 
-        int(xs[1]), 
-        int(ys[1]), 
-        press_time
-    )
+def swipe(direction):
+    x_start = 850
+    if direction == 'right':
+        x_start = 250
+    cmd = 'adb shell input swipe {} 788 460 798 {}'.format(x_start, int(random.uniform(200, 250)))
     print(cmd)
     os.system(cmd)
-
-
-# 游戏失败后重新开始，(540，1588)为1080*1920分辨率手机上重新开始按钮的位置
-def restart():
-    #adb shell wm size
-    cmd = 'adb shell input swipe 850 788 460 798 {}'.format(int(random.uniform(200, 250)))
-    os.system(cmd)
-    time.sleep(3)
 
 
 # 解析图片数据
@@ -189,8 +173,6 @@ def parseImage(filepath, need_Y_out=True):
         score = filepath.split('_')[-1].split('.')[0]
         if score.isdigit():
             y_out[int(score) - 1] = 1
-        # print(y_out)
-        # y_out = np.reshape(y_out, [10, ])
     return x_in, y_out
 
 
@@ -235,6 +217,7 @@ def start_train(sess, epoch):
     file_writer = tf.compat.v1.summary.FileWriter('./logs', sess.graph)
     print('训练完成！')
 
+#测试模型
 def test_model(sess):
     path = './test_set/'
     images = os.listdir(path)
@@ -258,31 +241,21 @@ def test_model(sess):
         cv2.destroyAllWindows()
     print('测试完成！')
 
-# 开始玩耍
 def start_play(sess):
-    folder =  './records/' + datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    os.mkdir(folder)
     while True:
-        print("----------------------------")
-        x_in = get_screen_shot()
+        x_in, y_out = get_screen_shot()
+        batch_xs = [x_in]
+        # 神经网络的预测结果
+        pred_result1 = sess.run(pred_result, feed_dict={x: batch_xs, keep_prob: 1})
+        print(pred_result1)
+        score = pred_result1[0]
         ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        shutil.copyfile('./jump_temp.jpg', folder + '/' + ctime + '.jpg')
-        shutil.copyfile('./jump_temp.png', folder + '/' + ctime + '.png')
-
-        # 神经网络的输出
-        y_result = sess.run(pred, feed_dict={x: x_in, keep_prob: 1})
-        if y_result[0][0] < 0:
-            y_result[0][0] = 0
-        
-        touch_time = int(y_result[0][0])
-
-        # rdn_t = random.randrange(20, 30);
-        os.rename(folder + '/' + ctime + '.jpg', folder + '/' + ctime + '_' + str(touch_time) + '.jpg')
-        os.rename(folder + '/' + ctime + '.png', folder + '/' + ctime + '_' + str(touch_time) + '.png')
-        
-        print("touch time: ", touch_time, "ms")
-        jump(touch_time)
-        time.sleep(touch_time / 1000 + random.randrange(800, 1500) / 1000)
+        print(ctime, "\tscore: ", score)
+        direction = "left"
+        if score >= 7:
+            direction = "right"
+        swipe(direction)
+        time.sleep(random.randrange(2000, 2500) / 1000)
 
 def saveLoss(filepath, data):
     if os.path.exists(filepath) == False:
@@ -303,14 +276,11 @@ with tf.compat.v1.Session() as sess:
     if len(os.listdir(model_path)) > 0:
         saver_init.restore(sess, model_path + 'mode.mod')
     if IS_TRAINING:
-        # while True:
-        # x_in = get_screen_shot()
         start_train(sess, EPOCH)
     else:
-        while True:
-            test_model(sess)
-            # start_play(sess)
-            # pass
+        test_model(sess)
+        # start_play(sess)
+        # pass
 
 
 
