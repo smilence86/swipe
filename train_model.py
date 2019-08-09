@@ -148,11 +148,12 @@ def get_screen_shot():
     return parseImage(filepath, False)
 
 
-def swipe(direction):
-    x_start = 850
-    if direction == 'right':
-        x_start = 250
-    cmd = 'adb shell input swipe {} 788 460 798 {}'.format(x_start, int(random.uniform(200, 250)))
+def swipe(score):
+    x_start = 850   #default swipe to left
+    if score >= 7:
+        x_start = 200   #swipe to right with a beautiful girl
+    #adb shell input swipe x1 y1 x2 y2 millisecond
+    cmd = 'adb shell input swipe {} 688 520 698 {}'.format(x_start, int(random.uniform(200, 250)))
     print(cmd)
     os.system(cmd)
 
@@ -173,7 +174,7 @@ def parseImage(filepath, need_Y_out=True):
         score = filepath.split('_')[-1].split('.')[0]
         if score.isdigit():
             y_out[int(score) - 1] = 1
-    return x_in, y_out
+    return x_in, y_out, filepath
 
 
 # 开始训练
@@ -193,12 +194,11 @@ def start_train(sess, epoch):
             for img in imgs[:]:
                 filepath = path + img
                 # print(filepath)
-                x_in, y_out = parseImage(filepath)
+                x_in, y_out, filepath = parseImage(filepath)
                 # print(x_in, y_out)
                 batch_xs.append(x_in)
                 batch_ys.append(y_out)
-            # ————————————————  开始训练  ——————————————————
-            # 使用batch_xs，batch_ys训练
+            # ————————————————  使用batch_xs，batch_ys训练  ——————————————————
             y_pred, loss, pred_result1, NULL = sess.run([pred, cost, pred_result, train_step], feed_dict={x: batch_xs, y: batch_ys, keep_prob: 0.6, learn_rate: Learn_rate})
             #输出进度
             ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -206,8 +206,6 @@ def start_train(sess, epoch):
             # 保存loss
             loss_array.append(loss)
             #对比结果
-            # print('origin:', [round(i[0], 0) for i in batch_ys])
-            # print('result:', [int(i[0]) for i in y_pred.tolist()])
             print('origin:', batch_ys)
             print('result:', pred_result1)
             print("loss:", '{0:.10f}'.format(loss))
@@ -227,7 +225,7 @@ def test_model(sess):
     for img in images[:]:
         filepath = path + img
         print(filepath)
-        x_in, y_out = parseImage(filepath, False)
+        x_in, y_out, filepath = parseImage(filepath, False)
         # print(x_in, y_out)
         batch_xs = [x_in]
         # 使用batch_xs测试
@@ -243,18 +241,16 @@ def test_model(sess):
 
 def start_play(sess):
     while True:
-        x_in, y_out = get_screen_shot()
+        x_in, y_out, filepath = get_screen_shot()
         batch_xs = [x_in]
-        # 神经网络的预测结果
+        # result of prediction
         pred_result1 = sess.run(pred_result, feed_dict={x: batch_xs, keep_prob: 1})
-        print(pred_result1)
         score = pred_result1[0]
         ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        print(ctime, "\tscore: ", score)
-        direction = "left"
-        if score >= 7:
-            direction = "right"
-        swipe(direction)
+        print(ctime, "\tscore: ", score, "\n")
+        swipe(score)
+        #save score to image
+        os.rename(filepath, '.' + filepath.rsplit('.')[1] + '_' + str(score) + '.png')
         time.sleep(random.randrange(2000, 2500) / 1000)
 
 def saveLoss(filepath, data):
