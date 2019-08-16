@@ -1,9 +1,11 @@
 import math, random, time as time, datetime, shutil, os, cv2
+import face_recognition
 import tensorflow as tf
 import numpy as np
+from tool import zoomIn
 
 
-EPOCH = 40              #所有样本循环训练次数
+EPOCH = 20              #所有样本循环训练次数
 n_classes=10            #分类个数
 width=200               #输入图片宽度
 height=200              #输入图片高度
@@ -137,14 +139,29 @@ def get_screen_shot():
     os.system('adb shell screencap -p /sdcard/girl.png')
     os.system('adb pull /sdcard/girl.png .')
 
-    saved_dir = "./test_set/"
-    image = cv2.imread("./girl.png")
-    crop_img = image[250:1250, 30:1050]
-    resize_img = cv2.resize(crop_img, (200, 200))
+    save_dir = "./test_set/"
+    filepath = "./girl.png"
     millisecond = int(round(time.time() * 1000))
-    filepath = saved_dir + str(millisecond) + ".png"
-    cv2.imwrite(filepath, resize_img)
-
+    image = cv2.imread(filepath)
+    cv2.imwrite('./examples/' + str(millisecond) + "_.png", image)
+    image_file = face_recognition.load_image_file(filepath)
+    face_locations = face_recognition.face_locations(image_file)
+    resize_img = None
+    if len(face_locations) == 0:
+        print("can't detect face: " + filepath)
+        crop_img = image[250:1250, 30:1050]
+        resize_img = cv2.resize(crop_img, (200, 200))
+        filepath = save_dir + str(millisecond) + ".png"
+        cv2.imwrite(filepath, resize_img)
+    else:
+        top, right, bottom, left = face_locations[0]
+        height, width, channels = image.shape
+        #放大人脸范围
+        _left, _top, _right, _bottom = zoomIn(left, top, right, bottom, width, height)
+        face = image[_top:_bottom, _left:_right]
+        face = cv2.resize(face, (200, 200))
+        filepath = save_dir + str(millisecond) + ".png"
+        cv2.imwrite(filepath, face)
     return parseImage(filepath, False)
 
 
@@ -169,7 +186,8 @@ def parseImage(filepath, need_Y_out=True):
         for j in range(len(x_in[i])):
             x_in[i][j][0] /= 255
 
-    y_out = np.asarray([0] * n_classes)
+    #one-hot encoding
+    y_out = np.array([0] * n_classes)
     if need_Y_out:
         score = filepath.split('_')[-1].split('.')[0]
         if score.isdigit():
@@ -206,8 +224,8 @@ def start_train(sess, epoch):
             # 保存loss
             loss_array.append(loss)
             #对比结果
-            print('origin:', batch_ys)
-            print('result:', pred_result1)
+            print('truth:', [np.where(i==1)[0][0] for i in batch_ys])
+            print('predi:', [i for i in pred_result1])
             print("loss:", '{0:.10f}'.format(loss))
             # —————————————————————————————————————————————————————
         saveLoss('./loss.npz', loss_array)            
@@ -251,7 +269,7 @@ def start_play(sess):
         swipe(score)
         #save score to image
         os.rename(filepath, '.' + filepath.rsplit('.')[1] + '_' + str(score) + '.png')
-        time.sleep(random.randrange(2000, 2500) / 1000)
+        time.sleep(random.randrange(200, 700) / 1000)
 
 def saveLoss(filepath, data):
     if os.path.exists(filepath) == False:

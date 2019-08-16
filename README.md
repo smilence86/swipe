@@ -2,7 +2,7 @@ Score a girl's picture with cnn model, swipe left or right in tantan app automat
 
 # How to use:
   
-1、Recommend to use venv environment  
+1、Recommend to use venv environment (pip3 install virtualenv)
 ```
 $ git clone https://github.com/smilence86/swipe.git
 $ cd ./swipe
