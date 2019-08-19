@@ -51,15 +51,25 @@ def detect_face(path, target_dir):
             continue
         filepath = path + img
         print(filepath)
-        image_file = face_recognition.load_image_file(filepath)
-        face_locations = face_recognition.face_locations(image_file)
         image = cv2.imread(filepath)
+        #截取有效区域
+        image = image[250:1250, 30:1050]
+        image = cv2.resize(image, (500, 500))
+        #灰度
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # image_file = face_recognition.load_image_file(filepath)
+        #默认使用HOG算法检测人脸
+        face_locations = face_recognition.face_locations(gray)
+        if len(face_locations) == 0:
+            print("尝试使用cnn模型检测人脸")
+            face_locations = face_recognition.face_locations(gray, number_of_times_to_upsample=0, model="cnn")
+            print("cnn模型检测到人脸数量: " + str(len(face_locations)))
         if len(face_locations) == 0:
             print("can't detect face: " + filepath)
-            crop_img = image[250:1250, 30:1050]
-            resize_img = cv2.resize(crop_img, (200, 200))
-            filepath = target_dir + img
-            cv2.imwrite(filepath, resize_img)
+            # crop_img = image[250:1250, 30:1050]
+            # resize_img = cv2.resize(crop_img, (200, 200))
+            # filepath = target_dir + img
+            # cv2.imwrite(filepath, resize_img)
         else:
             top, right, bottom, left = face_locations[0]
             # print("A face is located at pixel location Top: {}, Left: {}, Bottom: {}, Right: {}".format(top, left, bottom, right))
@@ -68,16 +78,15 @@ def detect_face(path, target_dir):
             #放大人脸范围
             _left, _top, _right, _bottom = zoomIn(left, top, right, bottom, width, height)
             #画一个矩形
-            cv2.rectangle(image, (_left, _top), (_right, _bottom), (0,255,0), 1)
+            # cv2.rectangle(image, (_left, _top), (_right, _bottom), (0,255,0), 1)
             #保存脸部特征
             face = image[_top:_bottom, _left:_right]
             face = cv2.resize(face, (200, 200))
             cv2.imwrite(target_dir + img, face)
-            #显示图片
-            # image = image[250:1250, 30:1050]
-            # image = cv2.resize(image, (500, 500))
-            # cv2.imshow("face_location", image)
-            # cv2.waitKey(1000)
+        #显示图片
+        # image = cv2.resize(image, (500, 500))
+        # cv2.imshow("face_location", image)
+        # cv2.waitKey(1000)
     print("finish")
 
-detect_face('./examples/', './training_set/')
+# detect_face('./examples/', './training_set/')

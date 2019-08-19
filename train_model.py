@@ -5,12 +5,12 @@ import numpy as np
 from tool import zoomIn
 
 
-EPOCH = 20              #所有样本循环训练次数
+EPOCH=20                #所有样本循环训练次数
 n_classes=10            #分类个数
 width=200               #输入图片宽度
 height=200              #输入图片高度
 channels=3              #输入图片通道数（RGB）
-batch_size = 5          #小批量梯度下降，1代表随机梯度下降
+batch_size = 10          #小批量梯度下降，1代表随机梯度下降
 Learn_rate = 0.0002     #学习率
 # 输入：width*height图片，前面的None是batch size
 x = tf.compat.v1.placeholder(tf.float32, shape=[None, width, height, channels])
@@ -36,24 +36,31 @@ def conv2d(x, W, b, s=1):
     x = batch_norm(x, out_size)
     return tf.nn.relu(x)
 
-def maxpool(x, k=2):
+def maxPool(x, k=2):
     return tf.nn.max_pool2d(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
+
+def avgPool(x, k=2):
+    return tf.nn.avg_pool2d(x, ksize=[1, k, k, 1], strides=[1, k, k, 1], padding='SAME')
 
 weights = {
     #
-    'wc1': weight_variable([5, 5, 3, 32], 0.1),
+    'wc1': weight_variable([3, 3, 3, 32], 0.1),
     #
     'wc2': weight_variable([3, 3, 32, 64], 0.1),
     #
     'wc3': weight_variable([3, 3, 64, 128], 0.1),
     #
     'wc4': weight_variable([3, 3, 128, 256], 0.1),
+    #
+    'wc5': weight_variable([3, 3, 256, 512], 0.1),
+    #1×1卷积核，降低输出维度
+    'wc6': weight_variable([1, 1, 512, 256], 0.1),
     # fully connected, 
-    'w_fc1': weight_variable([13*13*256, 512], 0.1),
+    'w_fc1': weight_variable([4*4*256, 1024], 0.1),
     # fully connected, 
-    'w_fc2': weight_variable([512, 64], 0.1),
+    'w_fc2': weight_variable([1024, 512], 0.1),
     # 
-    'out': weight_variable([64, n_classes], 0.1)
+    'out': weight_variable([512, n_classes], 0.1)
 }
 
 biases = {
@@ -61,8 +68,10 @@ biases = {
     'bc2': bias_variable([64], 0.1),
     'bc3': bias_variable([128], 0.1),
     'bc4': bias_variable([256], 0.1),
-    'b_fc1': bias_variable([512], 0.1),
-    'b_fc2': bias_variable([64], 0.1),
+    'bc5': bias_variable([512], 0.1),
+    'bc6': bias_variable([256], 0.1),
+    'b_fc1': bias_variable([1024], 0.1),
+    'b_fc2': bias_variable([512], 0.1),
     'out': bias_variable([n_classes], 0.1)
 }
 
@@ -95,25 +104,35 @@ def conv_net(x, weights, biases, keep_prob):
     # x = tf.reshape(x, shape=[-1, 100, 100, 1])
     conv1 = conv2d(x, weights['wc1'], biases['bc1'])
     print(conv1.shape)
-    max_pool1 = maxpool(conv1, k=2)
+    max_pool1 = maxPool(conv1, k=2)
     print(max_pool1.shape)
 
     conv2 = conv2d(max_pool1, weights['wc2'], biases['bc2'])
     print(conv2.shape)
-    max_pool2 = maxpool(conv2, k=2)
+    max_pool2 = maxPool(conv2, k=2)
     print(max_pool2.shape)
 
     conv3 = conv2d(max_pool2, weights['wc3'], biases['bc3'])
     print(conv3.shape)
-    max_pool3 = maxpool(conv3, k=2)
+    max_pool3 = maxPool(conv3, k=2)
     print(max_pool3.shape)
 
     conv4 = conv2d(max_pool3, weights['wc4'], biases['bc4'])
     print(conv4.shape)
-    max_pool4 = maxpool(conv4, k=2)
+    max_pool4 = maxPool(conv4, k=2)
     print(max_pool4.shape)
 
-    pool_flat = tf.reshape(max_pool4, [-1, weights['w_fc1'].get_shape().as_list()[0]])
+    conv5 = conv2d(max_pool4, weights['wc5'], biases['bc5'])
+    print(conv5.shape)
+    max_pool5 = maxPool(conv5, k=2)
+    print(max_pool5.shape)
+
+    conv6 = conv2d(max_pool5, weights['wc6'], biases['bc6'])
+    print(conv6.shape)
+    avg_pool6 = avgPool(conv6, k=2)
+    print(avg_pool6.shape)
+
+    pool_flat = tf.reshape(avg_pool6, [-1, weights['w_fc1'].get_shape().as_list()[0]])
     fc1 = tf.nn.relu(tf.matmul(pool_flat, weights['w_fc1']) + biases['b_fc1'])
     fc1_drop = tf.nn.dropout(fc1, rate = 1 - keep_prob)
 
@@ -123,6 +142,10 @@ def conv_net(x, weights, biases, keep_prob):
     return out
 
 pred = conv_net(x, weights, biases, keep_prob)
+
+#评估准确率
+correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
 
 #交叉熵预测分类问题
 pred_result = tf.argmax(pred, 1)
@@ -144,13 +167,21 @@ def get_screen_shot():
     millisecond = int(round(time.time() * 1000))
     image = cv2.imread(filepath)
     cv2.imwrite('./examples/' + str(millisecond) + "_.png", image)
-    image_file = face_recognition.load_image_file(filepath)
-    face_locations = face_recognition.face_locations(image_file)
-    resize_img = None
+    #截取有效区域
+    image = image[250:1250, 30:1050]
+    image = cv2.resize(image, (500, 500))
+    #灰度
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # image_file = face_recognition.load_image_file(filepath)
+    #默认使用HOG算法检测人脸
+    face_locations = face_recognition.face_locations(gray)
+    if len(face_locations) == 0:
+        print("尝试使用cnn模型检测人脸")
+        face_locations = face_recognition.face_locations(gray, number_of_times_to_upsample=0, model="cnn")
+        print("cnn模型检测到人脸数量: " + str(len(face_locations)))
     if len(face_locations) == 0:
         print("can't detect face: " + filepath)
-        crop_img = image[250:1250, 30:1050]
-        resize_img = cv2.resize(crop_img, (200, 200))
+        resize_img = cv2.resize(image, (200, 200))
         filepath = save_dir + str(millisecond) + ".png"
         cv2.imwrite(filepath, resize_img)
     else:
@@ -217,7 +248,7 @@ def start_train(sess, epoch):
                 batch_xs.append(x_in)
                 batch_ys.append(y_out)
             # ————————————————  使用batch_xs，batch_ys训练  ——————————————————
-            y_pred, loss, pred_result1, NULL = sess.run([pred, cost, pred_result, train_step], feed_dict={x: batch_xs, y: batch_ys, keep_prob: 0.6, learn_rate: Learn_rate})
+            y_pred, accu, loss, pred_result1, NULL = sess.run([pred, accuracy, cost, pred_result, train_step], feed_dict={x: batch_xs, y: batch_ys, keep_prob: 0.6, learn_rate: Learn_rate})
             #输出进度
             ctime = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             print(ctime, '\t', str(e) + '/' + str(epoch), '\t', str(page) + '/' + str(total_page), "\t", filepath)
@@ -227,6 +258,7 @@ def start_train(sess, epoch):
             print('truth:', [np.where(i==1)[0][0] for i in batch_ys])
             print('predi:', [i for i in pred_result1])
             print("loss:", '{0:.10f}'.format(loss))
+            print("accu:", '{0:.10f}'.format(accu))
             # —————————————————————————————————————————————————————
         saveLoss('./loss.npz', loss_array)            
         saver_init.save(sess, "./model/mode.mod")
