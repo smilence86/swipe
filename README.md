@@ -6,7 +6,7 @@ Score a girl's picture with cnn model, swipe left or right in tantan app automat
 ```
 $ git clone https://github.com/smilence86/swipe.git
 $ cd ./swipe
-$ python3 -m venv .env
+$ python3 -m venv .venv (virtualenv -p python3.5 .venv)
 $ source .env/bin/activate
 ```
   

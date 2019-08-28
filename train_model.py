@@ -11,7 +11,7 @@ width=200               #输入图片宽度
 height=200              #输入图片高度
 channels=3              #输入图片通道数（RGB）
 batch_size = 10          #小批量梯度下降，1代表随机梯度下降
-Learn_rate = 0.0002     #学习率
+Learn_rate = 0.00002     #学习率
 # 输入：width*height图片，前面的None是batch size
 x = tf.compat.v1.placeholder(tf.float32, shape=[None, width, height, channels])
 # 输出：n_classes个分类
@@ -313,8 +313,8 @@ def saveLoss(filepath, data):
 
 
 # 区分是train还是play
-# IS_TRAINING = True
-IS_TRAINING = False
+IS_TRAINING = True
+# IS_TRAINING = False
 # with tf.device('/gpu:0'):
 with tf.compat.v1.Session() as sess:
     sess.run(tf_init)
