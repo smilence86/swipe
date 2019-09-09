@@ -134,7 +134,7 @@ def conv_net(x, weights, biases, keep_prob):
 
     pool_flat = tf.reshape(avg_pool6, [-1, weights['w_fc1'].get_shape().as_list()[0]])
     fc1 = tf.nn.relu(tf.matmul(pool_flat, weights['w_fc1']) + biases['b_fc1'])
-    fc1_drop = tf.nn.dropout(fc1, rate = 1 - keep_prob)
+    fc1_drop = tf.nn.dropout(fc1, keep_prob)
 
     fc2 = tf.nn.relu(tf.matmul(fc1_drop, weights['w_fc2']) + biases['b_fc2'])
 
